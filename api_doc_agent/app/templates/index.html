@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Doc AI Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/heroicons/2.1.3/24/outline/hero-icons.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Tailwind slate-900 */
+            color: #e2e8f0; /* Tailwind slate-200 */
+        }
+        #chatbox::-webkit-scrollbar { width: 6px; }
+        #chatbox::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 3px; } /* slate-700 */
+        #chatbox::-webkit-scrollbar-track { background-color: #1e293b; } /* slate-800 */
+
+        .message-bubble {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            max-width: 80%;
+            word-wrap: break-word;
+            line-height: 1.6;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        }
+        .user-message {
+            background-color: #2563eb; /* Tailwind blue-600 */
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.25rem;
+        }
+        .assistant-message {
+            background-color: #334155; /* Tailwind slate-700 */
+            color: #cbd5e1; /* Tailwind slate-300 */
+            align-self: flex-start;
+            border-bottom-left-radius: 0.25rem;
+            position: relative; /* For copy button */
+        }
+        .assistant-message pre {
+            background-color: #0f172a !important; /* slate-900 */
+            color: #e2e8f0 !important; /* slate-200 */
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            overflow-x: auto;
+            font-size: 0.875em;
+            margin: 0.5rem 0;
+        }
+        .assistant-message code:not(pre code) { /* Inline code */
+            background-color: #1e293b; /* slate-800 */
+            color: #94a3b8; /* slate-400 */
+            padding: 0.1em 0.3em;
+            border-radius: 0.25rem;
+            font-size: 0.9em;
+        }
+        .assistant-message strong { color: #f1f5f9; } /* slate-100 */
+        .assistant-message ul, .assistant-message ol { margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+        .assistant-message li { margin-bottom: 0.25rem; }
+        .assistant-message a { color: #60a5fa; text-decoration: underline; } /* blue-400 */
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin: 0 2px;
+            background-color: #64748b; /* slate-500 */
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #475569; /* slate-600 */
+            color: #cbd5e1; /* slate-300 */
+            border: none;
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+            cursor: pointer;
+            opacity: 0.3;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .assistant-message:hover .copy-btn { opacity: 1; }
+        .copy-btn:hover { background-color: #52525b; } /* zinc-600 */
+        .copy-btn svg { width: 1rem; height: 1rem; }
+        .copied-feedback {
+            position: absolute;
+            top: -1.8rem; /* Adjust as needed */
+            right: 0.5rem;
+            background-color: #16a34a; /* green-600 */
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-2 sm:p-4">
+    <div class="w-full max-w-3xl bg-slate-800 shadow-2xl rounded-xl flex flex-col h-[95vh] sm:h-[90vh]">
+        <header class="bg-slate-700/50 p-4 rounded-t-xl border-b border-slate-600">
+            <h1 class="text-xl font-semibold text-slate-100 text-center">API Documentation AI Assistant</h1>
+        </header>
+
+        <div id="chatbox" class="flex-grow p-4 sm:p-6 space-y-4 overflow-y-auto">
+            <div class="assistant-message">
+                Hello! I'm here to help you with questions about our API. What would you like to know?
+                <button class="copy-btn" onclick="copyToClipboard(this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.625v2.625m0 0H12m3.75 0l-3.75-3.75M12 15l-3.75 3.75" /></svg>
+                </button>
+            </div>
+        </div>
+        
+        <div id="typingIndicator" class="hidden p-4 items-center space-x-2">
+            <div class="assistant-message !py-2 !px-3 !max-w-min"> <div class="typing-indicator"><span></span><span></span><span></span></div>
+            </div>
+        </div>
+        
+        <div id="errorDisplay" class="hidden p-3 m-4 bg-red-500/80 text-white rounded-md text-sm"></div>
+
+        <footer class="p-3 sm:p-4 border-t border-slate-600 bg-slate-800 rounded-b-xl">
+            <form id="chatForm" class="flex items-center space-x-2 sm:space-x-3">
+                <input type="text" id="userInput"
+                       class="flex-grow p-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none placeholder-slate-400 text-slate-100 text-sm sm:text-base"
+                       placeholder="Ask about API endpoints, auth, etc..." autocomplete="off">
+                <button type="submit" id="sendButton"
+                        class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400/50 text-white font-medium py-3 px-4 sm:px-5 rounded-lg transition duration-150 ease-in-out flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M3.105 3.105a1.5 1.5 0 012.122-.001L19.41 17.29A1.575 1.575 0 0117.29 19.41L3.105 5.227a1.5 1.5 0 01-.001-2.122zM3.105 16.895L16.895 3.105l2.122 2.122L5.227 19.41a1.5 1.5 0 01-2.122-.001z" /></svg>
+                </button>
+            </form>
+        </footer>
+    </div>
+
+    <script>
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const chatbox = document.getElementById('chatbox');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const errorDisplay = document.getElementById('errorDisplay');
+
+        // Basic Markdown to HTML renderer
+        function simpleMarkdown(text) {
+            let html = text
+                // Escape HTML to prevent XSS from markdown content itself (e.g. if docs contained html)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                // Code blocks (```text```) - very basic, assumes language hint is small or none
+                .replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => `<pre><code class="language-${lang || ''}">${code.trim()}</code></pre>`)
+                // Inline code (`text`)
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                // Bold (**text** or __text__)
+                .replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>')
+                // Italics (*text* or _text_)
+                .replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>')
+                // Strikethrough (~~text~~)
+                .replace(/~~(.*?)~~/g, '<del>$1</del>')
+                // Links ([text](url))
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+                // Unordered list items (* or - or +) - basic, doesn't handle nesting well
+                .replace(/^\s*[-*+]\s+(.*)/gm, '<li>$1</li>')
+                // Ordered list items (1.) - basic
+                .replace(/^\s*\d+\.\s+(.*)/gm, '<li>$1</li>')
+                // Newlines to <br> (after list processing to avoid <br> in <li>)
+                .replace(/\n/g, '<br>');
+            
+            // Wrap detected lists
+            html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>'); // Naive wrapping, might need improvement for mixed lists
+
+            return html;
+        }
+
+        function addMessageToChatbox(text, sender, isStreaming = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message-bubble', sender === 'user' ? 'user-message' : 'assistant-message');
+            
+            if (sender === 'assistant' && !isStreaming) { // Only add copy button to fully formed assistant messages
+                const copyButton = document.createElement('button');
+                copyButton.classList.add('copy-btn');
+                copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.625v2.625m0 0H12m3.75 0l-3.75-3.75M12 15l-3.75 3.75" /></svg>`;
+                copyButton.onclick = () => copyToClipboard(copyButton);
+                messageDiv.appendChild(copyButton);
+            }
+            
+            // For non-streaming, render markdown immediately. For streaming, it will be text content.
+            messageDiv.innerHTML += isStreaming ? text : simpleMarkdown(text);
+            chatbox.appendChild(messageDiv);
+            chatbox.scrollTop = chatbox.scrollHeight;
+            return messageDiv; // Return for potential updates (streaming)
+        }
+
+        async function copyToClipboard(buttonElement) {
+            const messageBubble = buttonElement.closest('.assistant-message');
+            // Clone the content, remove the button itself, then get text
+            const contentToCopy = messageBubble.cloneNode(true);
+            contentToCopy.querySelector('.copy-btn')?.remove();
+            const textToCopy = contentToCopy.textContent || contentToCopy.innerText;
+
+            try {
+                await navigator.clipboard.writeText(textToCopy.trim());
+                const feedback = document.createElement('div');
+                feedback.textContent = 'Copied!';
+                feedback.classList.add('copied-feedback');
+                buttonElement.parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 1500);
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+                // Fallback or error message (optional)
+            }
+        }
+
+        chatForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const question = userInput.value.trim();
+            if (!question) return;
+
+            addMessageToChatbox(question, 'user');
+            userInput.value = ''; // Clear input
+            userInput.disabled = true;
+            sendButton.disabled = true;
+            typingIndicator.classList.remove('hidden');
+            typingIndicator.classList.add('flex'); // Use flex for items-center
+            errorDisplay.classList.add('hidden');
+
+            let assistantMessageDiv = addMessageToChatbox('', 'assistant', true); // Create empty bubble for streaming
+            let accumulatedResponse = "";
+
+            try {
+                const response = await fetch('/ask_stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question }),
+                });
+
+                typingIndicator.classList.add('hidden');
+                typingIndicator.classList.remove('flex');
+
+                if (!response.ok || !response.body) {
+                    const errorText = response.statusText || "Network error";
+                    throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) {
+                        // Apply full markdown rendering to the completed message
+                        assistantMessageDiv.innerHTML = simpleMarkdown(accumulatedResponse);
+                        // Re-add copy button after content is final
+                        const copyButton = document.createElement('button');
+                        copyButton.classList.add('copy-btn');
+                        copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 4.625v2.625m0 0H12m3.75 0l-3.75-3.75M12 15l-3.75 3.75" /></svg>`;
+                        copyButton.onclick = () => copyToClipboard(copyButton);
+                        assistantMessageDiv.prepend(copyButton); // Prepend to keep it top-right
+                        break;
+                    }
+                    const chunk = decoder.decode(value, { stream: true });
+                    accumulatedResponse += chunk;
+                    // Update textContent for live typing, then render markdown once done
+                    assistantMessageDiv.textContent = accumulatedResponse; // Basic live text update
+                    chatbox.scrollTop = chatbox.scrollHeight;
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                typingIndicator.classList.add('hidden');
+                typingIndicator.classList.remove('flex');
+                errorDisplay.textContent = `Error: ${error.message}`;
+                errorDisplay.classList.remove('hidden');
+                assistantMessageDiv.innerHTML = `<span class="text-red-400">Sorry, I encountered an error: ${error.message}</span>`;
+            } finally {
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.focus();
+            }
+        });
+         // Attach copy function to initial message's button
+        document.querySelector('#chatbox .assistant-message .copy-btn')?.addEventListener('click', function() {
+            copyToClipboard(this);
+        });
+    </script>
+</body>
+</html>

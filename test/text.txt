@@ -1,0 +1,2 @@
+working directory -> Stagging area -> Local repo.
+ -> remote repo
